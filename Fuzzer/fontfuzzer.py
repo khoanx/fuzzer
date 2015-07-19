@@ -1,27 +1,29 @@
+'''
+    Fuzzer client 
+    Authors: khoanx
+'''
+
 import  sys
 import  os
 import  win32api
 import  win32gui
 import  struct
 import  time
-from    ctypes import *
-from    fontTools import ttLib
-from    win32con import *
+from    ctypes      import *
+from    fontTools   import ttLib
+from    win32con    import *
 import  logging
-from SimpleXMLRPCServer import SimpleXMLRPCServer
-from xmlrpclib          import Binary
-import datetime
-import base64
+from    SimpleXMLRPCServer import SimpleXMLRPCServer
+from    xmlrpclib          import Binary
+import  datetime
+import  base64
 
+''' RPC server address '''
 SERVER_IP       = "0.0.0.0"
 PORT            = 6969
 
 
-
-FONT_SPECIFIER_NAME_ID      =   4
-FONT_SPECIFIER_FAMILY_ID    =   1
-FR_PRIVATE                  =   0x10
-
+''' For logger '''
 logger      = logging.getLogger('fuzzlog')
 filelogger  = logging.FileHandler('log.txt')
 formatter   = logging.Formatter('%(message)s')
@@ -31,21 +33,24 @@ logger.setLevel(logging.INFO)
 
 
 
+''' Create a windows to load font '''
 class fuzzer_window():
 
     def __init__(self):
-
+        ''' Init '''
         win32gui.InitCommonControls()
         self.hinst = windll.kernel32.GetModuleHandleW(None)
 
+        
     def CreateWindow(self):
-
+        ''' Create windows '''
         reg     =   self.RegisterClass()
         hwnd    =   self.BuildWindow(reg)
         return hwnd
 
+    
     def RegisterClass(self):
-
+        ''' Register class '''
         WndProc         =   {WM_DESTROY: self.OnDestroy}
         wc              =   win32gui.WNDCLASS()
         wc.hInstance    =   self.hinst
@@ -58,7 +63,7 @@ class fuzzer_window():
         return reg
 
     def BuildWindow(self, reg):
-
+        ''' Create and show windows '''
         hwnd    =   windll.user32.CreateWindowExW(
             WS_EX_TOPMOST | WS_EX_NOACTIVATE,
             reg,
@@ -77,11 +82,12 @@ class fuzzer_window():
         return hwnd
 
     def OnDestroy(self, hwnd, message, wparam, lparam):
-
+        ''' Destroy windows '''
         win32gui.PostQuitMessage(0)
         return True
 
 
+''' Load a font on windows '''
 class font_fuzzer():
 
     def __init__(self, filepath):
@@ -124,6 +130,7 @@ class font_fuzzer():
 
         ETO_GLYPH_INDEX     =   16
         text                =   "luffy"
+        
         windll.gdi32.TextOutA(self.hdc, 5, 5, text, len(text))
 
 
@@ -141,6 +148,7 @@ class font_fuzzer():
 
 
 
+''' Get font name '''
 class font_util():
     @staticmethod
     def shortName(font):
@@ -165,11 +173,9 @@ class font_util():
 
 
 class fuzzer_service():
-
-    def ping(self):
-        return "Hello World"
-
+    
     def send_font(self, data):
+        ''' Get font from server '''
         self.fontname = "font/" + str(int(time.time())) + ".ttf"
         fontfile = open(self.fontname, "wb")
         fontfile.write(base64.b64decode(data))
@@ -181,18 +187,20 @@ class fuzzer_service():
             return "[-] fuzz failed"
 
     def fuzz(self):
+        ''' Start fuzzing '''
         fuzzer = font_fuzzer(self.fontname)
         fuzzer.fuzz()
         return "[+] Fuzz successfully"
 
 
 
-
+''' Create server '''
 server = SimpleXMLRPCServer((SERVER_IP, PORT), logRequests = True, allow_none = True)
 server.register_introspection_functions()
 server.register_multicall_functions()
 server.register_instance(fuzzer_service())
 
+''' Run as service '''
 try:
     server.serve_forever()
 except KeyboardInterrupt:
