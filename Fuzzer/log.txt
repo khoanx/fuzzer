@@ -1,0 +1,4 @@
+Start fuzzing: font/1436978531.ttf
+Start fuzzing: font/1436978606.ttf
+Create font
+End fuzzing: font/1436978606.ttf
